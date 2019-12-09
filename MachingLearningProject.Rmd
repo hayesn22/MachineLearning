@@ -1,0 +1,73 @@
+
+Setting up packages
+```{r, echo=TRUE}
+library(ggplot2)
+library(lattice)
+library(caret)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+
+set.seed(1234)
+```
+For reproducibilty purposes, the seed was set to 1234. The above packages, including caret, random forest, rpart, and rpart.plot were all installed to use for this project. 
+
+For this project, we focused on the factor variable classe, which was focused on the execution/ mistakes of the participants performance. A decision tree model and random forest model will be applied to the data, and the more accurate model will be used to make the final predictions. 
+
+Reading in Data
+```{r, echo=TRUE}
+trainingdata <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+testdata <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+
+```
+
+Cleaning data
+```{r, echo=TRUE}
+trainingdata<-trainingdata[,colSums(is.na(trainingdata)) == 0]
+testdata <-testdata[,colSums(is.na(testdata)) == 0]
+
+trainingdata <-trainingdata[,-c(1:7)]
+testdata <-testdata[,-c(1:7)]
+
+dim(trainingdata)
+dim(testdata)
+```
+
+Cross- validation: partitioning the data
+
+In order to perform cross-validation, the training data is split into two subsamples. The trainSubset makes up 75% of the original training set, while the testSubset is the other 25% percent of the original training data. Modeling will be done on the trainSubset and then tested on the testSubset. Once the better model is decided, the final prediction will be done on the original test data. 
+```{r, echo=TRUE}
+sub <- createDataPartition(y=trainingdata$classe, p=0.75, list = FALSE)
+trainSubset <- trainingdata[sub,]
+testSubset <- trainingdata[-sub,]
+
+dim(trainSubset)
+dim(testSubset)
+
+```
+
+Decision Tree
+```{r, echo=TRUE}
+treePlot <- rpart(classe ~., data = trainSubset, method = "class")
+prp(treePlot)
+```
+```{r, echo = TRUE}
+treePrediction <- predict(treePlot, testSubset, type = "class")
+confusionMatrix(treePrediction, testSubset$classe)
+```
+The accuracy of the decision tree model is 0.7455. 
+
+Random Forest
+```{r, echo = TRUE}
+forestmod <- randomForest(classe ~., data = trainSubset, method = "class")
+forestPrediction <- predict(forestmod, testSubset, type = "class")
+confusionMatrix(forestPrediction, testSubset$classe)
+```
+The accuracy of the random forest model is 0.995, which is higher than the decision tree model. So we will use the random forest model for the final prediction. The expected out-of-sample error corresponds to 1-accuracy from the cross-validation data set. 
+
+Final Prediction
+```{r}
+finalPredict <- predict(forestmod, testdata, type = "class")
+finalPredict
+```
+
